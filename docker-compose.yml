@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16
@@ -19,8 +17,8 @@ services:
 
   app:
     build: .
-    env_file:
-      - .env
+    # env_file:
+    #   - .env
     depends_on:
       db:
         condition: service_healthy
