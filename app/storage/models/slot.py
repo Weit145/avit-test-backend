@@ -13,3 +13,4 @@ class Slot(Base):
     end: Mapped[datetime] = mapped_column(DateTime(timezone=True),nullable=False)
     
     room: Mapped["Room"] = relationship(back_populates="slots")
+    bookings: Mapped[list["Booking"]] = relationship(back_populates="slot",cascade="all, delete-orphan")

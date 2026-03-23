@@ -6,6 +6,7 @@ import uvicorn
 
 from app.api.v1.auth import router as auth_router
 from app.api.v1.rooms import router as room_router
+from app.api.v1.bookings import router as booking_router
 from fastapi import FastAPI
 
 
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, title="Avito TEST",swagger_ui_parameters={"persistAuthorization": True})
 app.include_router(auth_router)
 app.include_router(room_router)
+app.include_router(booking_router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", reload=True)

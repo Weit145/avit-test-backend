@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
 from app.storage.models.base import Base
-from app.storage.models import Slot,Schedule,Room  # noqa: F401
+from app.storage.models import Slot,Schedule,Room,Booking  # noqa: F401
 
 config = context.config
 fileConfig(config.config_file_name)

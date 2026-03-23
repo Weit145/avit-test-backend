@@ -1,8 +1,9 @@
 from pydantic import BaseModel
+import uuid
 
 
 class Auth(BaseModel):
-    uuid:str
+    uuid:uuid.UUID
     role:str
     pass
 

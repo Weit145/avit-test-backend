@@ -26,9 +26,9 @@ class Schedule(BaseModel):
         start_dt = datetime.combine(today, self.startTime)
         end_dt = datetime.combine(today, self.endTime)
         if end_dt < start_dt:
-            end_dt += timedelta(days=1)
-        if (end_dt - start_dt) < timedelta(minutes=30):
-            raise ValueError('Not 30 min')
+            raise ValueError('Start time > End Time')
+        if (end_dt - start_dt).total_seconds() % 1800 != 0:
+            raise ValueError('Duration must be a multiple of 30 minutes')
         return self
     pass
 
