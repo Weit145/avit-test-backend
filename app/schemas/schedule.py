@@ -1,12 +1,13 @@
 import uuid
-from datetime import datetime, timedelta, time
-from pydantic import BaseModel, Field, field_validator, model_validator
+from datetime import datetime, time
+from pydantic import BaseModel, field_validator, model_validator
 from annotated_types import MaxLen, MinLen
-from typing import Optional, Annotated, List
-import re
-
+from typing import Annotated, List
 
 class Schedule(BaseModel):
+    pass
+
+class CreateSchedule(Schedule):
     daysOfWeek: Annotated[List[int], MinLen(1), MaxLen(7)]
     startTime:time
     endTime:time
@@ -18,7 +19,7 @@ class Schedule(BaseModel):
                 raise ValueError('Format Days error')
             if len(days) != len(set(days)):
                 raise ValueError('No unique values')
-        return days
+        return sorted(days)
 
     @model_validator(mode='after')
     def validate_time_range(self):
@@ -30,12 +31,10 @@ class Schedule(BaseModel):
         if (end_dt - start_dt).total_seconds() % 1800 != 0:
             raise ValueError('Duration must be a multiple of 30 minutes')
         return self
-    pass
-
-class CreateSchedule(Schedule):
-    pass
 
 class OutSchedule(Schedule):
     id: uuid.UUID
     roomId: uuid.UUID
-    pass
+    daysOfWeek: Annotated[List[int], MinLen(1), MaxLen(7)]
+    startTime:time
+    endTime:time

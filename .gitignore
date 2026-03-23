@@ -24,4 +24,11 @@ vendor/
 .idea/
 .vscode/
 
+# py
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
 .DS_Store

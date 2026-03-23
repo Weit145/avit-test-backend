@@ -4,16 +4,17 @@ import datetime
 from typing import Any, Optional
 
 class Booking(BaseModel):
-    slotId : uuid.UUID
-    createConferenceLink : Any
+    pass
 
 
 class CreateBooking(Booking):
-    createConferenceLink : Optional[bool] = Field(default=False)
+    slotId : uuid.UUID
+    conferenceLink : Optional[bool] = Field(default=False)
 
 class OutBooking(Booking):
     id: uuid.UUID
+    slotId : uuid.UUID
     userId: uuid.UUID
     status: str
-    createConferenceLink: Optional[str] = None
+    conferenceLink: Optional[str] = None
     createdAt:datetime.datetime

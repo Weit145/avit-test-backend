@@ -1,10 +1,9 @@
-from app.api.v1 import slots
 from app.schemas.rooms import CreateRoom, OutRoom
 from app.schemas.schedule import CreateSchedule, OutSchedule
 from app.schemas.slots import OutSlot
 from app.schemas.bookings import CreateBooking, OutBooking
 from app.storage.models import Room, Schedule, Slot, Booking
-from datetime import datetime, timedelta
+from datetime import datetime
 import uuid
 from typing import List
 
@@ -75,7 +74,7 @@ def convert_booking_bd(booking:CreateBooking, user_id:uuid.UUID, link:str|None =
 def convert_booking_out(booking:Booking)->OutBooking:
     return OutBooking(
         slotId=booking.slot_id,
-        createConferenceLink=booking.conference_link,
+        conferenceLink=booking.conference_link,
         id = booking.id,
         userId = booking.user_id,
         status= booking.status,

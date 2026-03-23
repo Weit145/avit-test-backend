@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
-from app.schemas.schemas_auth import Auth
+from app.schemas.auth import Auth
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from app.core.config import settings
@@ -18,10 +18,8 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
-    
     user_id = payload.get("user_id")
     role_token = payload.get("role")
-
     if user_id is None or role_token is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

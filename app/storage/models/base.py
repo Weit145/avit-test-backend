@@ -13,4 +13,3 @@ class Base(DeclarativeBase):
         unique=True,
         nullable=False
     )
-    pass

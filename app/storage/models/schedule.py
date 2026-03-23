@@ -1,6 +1,5 @@
 import uuid
-from sqlalchemy import Uuid
-from sqlalchemy import Uuid, ForeignKey, ARRAY, Integer, Time, UniqueConstraint
+from sqlalchemy import Uuid, ForeignKey, ARRAY, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import datetime
 from .base import Base

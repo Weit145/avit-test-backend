@@ -36,10 +36,8 @@ class Booking(Base):
         default=lambda: datetime.now(timezone.utc)
     )
 
-    # Relationships
     slot: Mapped["Slot"] = relationship(back_populates="bookings")
 
-    # Indexes for performance
     __table_args__ = (
         Index("idx_booking_slot_status", "slot_id", "status"),
     )
