@@ -14,6 +14,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   app:
     build: .
@@ -28,6 +30,24 @@ services:
       - "8080:8000"
     command: >
       bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    networks:
+      - app-network
+
+  integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      - app
+    command: ["pytest", "test/integration/test_booking_flow.py"]
+    networks:
+      - app-network
+    profiles:
+      - test
 
 volumes:
   db_data:
+
+networks:
+  app-network:
+    driver: bridge

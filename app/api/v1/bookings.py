@@ -33,7 +33,7 @@ async def read_my_bookings(
     return await service.read_my_bookings(user)
 
 
-@router.post("{bookingId}/cancel", status_code=status.HTTP_200_OK)
+@router.post("/{bookingId}/cancel", status_code=status.HTTP_200_OK)
 async def cancel_booking(
     user: Annotated[Auth, Depends(check_user_role)],
     bookingId: Annotated[uuid.UUID, Path(title="The ID of the booking to cancel")],

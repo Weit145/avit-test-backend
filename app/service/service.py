@@ -94,9 +94,7 @@ class Service:
                     detail="Slots is in the past",
                 )
 
-            start_of_day = datetime.combine(
-                date, schedule.start_time, tzinfo=timezone.utc
-            )
+            start_of_day = datetime.combine(date, schedule.start_time, tzinfo=timezone.utc)
             end_of_day = datetime.combine(date, schedule.end_time, tzinfo=timezone.utc)
             check = await self.repo.exists_slots_in_range(
                 roomId, start_of_day, end_of_day, session
@@ -150,6 +148,7 @@ class Service:
 
             if check_brooked is not None and check_brooked.status == "cancel":
                 check_brooked.status = "active"
+                check_brooked.user_id = user.uuid
                 check_brooked.conference_link = link
                 result = await self.repo.create_booking(check_brooked, session)
             else:

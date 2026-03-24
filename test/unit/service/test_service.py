@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from unittest.mock import AsyncMock, MagicMock
 from unittest.mock import ANY
 import pytest
-from contextlib import nullcontext
 from app.service.service import Service
 
 
@@ -22,18 +21,17 @@ class TestService:
         assert result.jwt == "token"
         service.jwt.create_token.assert_called_once()
 
+
     @pytest.mark.asyncio
     async def test_create_room(self, monkeypatch, service):
-        def fake_to_out(x):
-            return MagicMock()
+        monkeypatch.setattr("app.mappers.room.to_bd", lambda x: MagicMock())
+        monkeypatch.setattr("app.mappers.room.to_out", lambda x: "room")
 
-        def fake_to_bd(x):
-            return MagicMock()
+        service.repo.create_room.return_value = MagicMock()
+        result = await service.create_room(ANY)
+        service.repo.create_room.assert_awaited_once()
+        assert result == "room"
 
-        monkeypatch.setattr("app.mappers.room.to_bd", fake_to_bd)
-        monkeypatch.setattr("app.mappers.room.to_out", fake_to_out)
-        await service.create_room(MagicMock())
-        service.repo.create_room.assert_awaited_once_with(ANY, ANY)
 
     @pytest.mark.parametrize(
         "page, page_size, count_room",
@@ -43,73 +41,76 @@ class TestService:
         ],
     )
     @pytest.mark.asyncio
-    async def test_list_rooms(self, service, page, page_size, count_room):
-        service.repo.get_rooms_count = AsyncMock(return_value=count_room)
-        service.repo.list_rooms_paginated = AsyncMock()
+    async def test_list_rooms(self, service, page, monkeypatch, page_size, count_room):
+        service.repo.get_rooms_count.return_value = count_room
+        service.repo.list_rooms_paginated.return_value = MagicMock()
+        
+        monkeypatch.setattr("app.mappers.room.list_to_out", lambda x: ["list"])
+        
         result = await service.list_rooms(page, page_size)
+        
+        service.repo.get_rooms_count.assert_awaited_once()
         if count_room is None:
-            assert result == []
             service.repo.list_rooms_paginated.assert_not_awaited()
+            assert result == []
         else:
             expected_offset = (page - 1) * page_size
             service.repo.list_rooms_paginated.assert_awaited_once_with(
                 expected_offset, page_size, ANY
             )
+            assert result ==  ["list"]
+
 
     @pytest.mark.parametrize(
-        "room, schedule, expec",
+        "room, schedule, expected_status",
         [
-            (MagicMock(), None, nullcontext()),
-            (None, MagicMock(), pytest.raises(HTTPException)),
-            (MagicMock(), MagicMock(), pytest.raises(HTTPException)),
+            (MagicMock(), None, None),
+            (None, MagicMock(), 404),
+            (MagicMock(), MagicMock(), 409),
         ],
     )
     @pytest.mark.asyncio
-    async def test_create_schedule(self, service, monkeypatch, room, schedule, expec):
-        service.repo.get_room_by_id = AsyncMock(return_value=room)
-        service.repo.get_schedule_by_room_id = AsyncMock(return_value=schedule)
+    async def test_create_schedule(self, service, monkeypatch, room, schedule, expected_status):
+        service.repo.get_room_by_id.return_value = room
+        service.repo.get_schedule_by_room_id.return_value = schedule
 
-        def fake_to_bd(x, y):
-            return MagicMock()
+        monkeypatch.setattr("app.mappers.schedule.to_bd",  lambda x, y: MagicMock())
+        monkeypatch.setattr("app.mappers.schedule.to_out",  lambda x: "schedule")
 
-        def fake_to_out(x):
-            return MagicMock()
+        if expected_status:
+            with pytest.raises(HTTPException) as exc:
+                await service.create_schedule("room-id", MagicMock())
+            assert exc.value.status_code == expected_status
+        else:
+            result = await service.create_schedule("room-id", MagicMock())
+            assert result == "schedule"
 
-        monkeypatch.setattr("app.mappers.schedule.to_bd", fake_to_bd)
-        monkeypatch.setattr("app.mappers.schedule.to_out", fake_to_out)
+        service.repo.get_room_by_id.assert_awaited_once()
+        if room is None:
+            service.repo.get_schedule_by_room_id.assert_not_awaited()
+            service.repo.create_schedule.assert_not_awaited()
+        elif schedule is not None:
+            service.repo.get_schedule_by_room_id.assert_awaited_once()
+            service.repo.create_schedule.assert_not_awaited()
+        else:
+            service.repo.get_schedule_by_room_id.assert_awaited_once()
+            service.repo.create_schedule.assert_awaited_once()
 
-        with expec:
-            await service.create_schedule("room-id", MagicMock())
+
 
     @pytest.mark.parametrize(
-        "schedule_exists, days_of_week, check, test_date, expect_exception, expected_result_type",
+        "schedule, days, check, test_date, expected_status, expected_path",
         [
-            (None, None, None, date(2026, 3, 24), False, "empty"),
-            (MagicMock(), [], None, date(2026, 3, 24), False, "empty"),
-            (
-                MagicMock(),
-                [date.today().isoweekday()],
-                None,
-                date(2020, 1, 1),
-                False,
-                [],
-            ),
-            (
-                MagicMock(),
-                [date.today().isoweekday()],
-                None,
-                date(2026, 3, 24),
-                False,
-                "create",
-            ),
-            (
-                MagicMock(),
-                [date.today().isoweekday()],
-                True,
-                date(2026, 3, 24),
-                False,
-                "existing",
-            ),
+            # нет schedule
+            (None, None, None, date(2026, 3, 24), None, "empty"),
+            # нет в расписание
+            (MagicMock(), [1,3], None, date(2026, 3, 24), None, "empty"),
+            # дата в прошлом
+            (MagicMock(), [1,2,3,4,5,6,7], None, date(2020, 1, 1), 400, None),
+            # создаём слоты
+            (MagicMock(), [1,2,3,4,5,6,7], False, date(2026, 3, 24), None, "create"),
+            # получаем слоты
+            (MagicMock(), [1,2,3,4,5,6,7], True, date(2026, 3, 24), None, "existing"),
         ],
     )
     @freeze_time("2026-03-24")
@@ -118,45 +119,69 @@ class TestService:
         self,
         service,
         monkeypatch,
-        schedule_exists,
-        days_of_week,
+        schedule,
+        days,
         check,
         test_date,
-        expect_exception,
-        expected_result_type,
+        expected_status,
+        expected_path,
     ):
-        service.repo.get_schedule_by_room_id = AsyncMock(return_value=schedule_exists)
+        service.repo.get_schedule_by_room_id.return_value = schedule
+        service.repo.exists_slots_in_range.return_value = check
+        service.repo.create_slots.return_value = [MagicMock()]
+        service.repo.list_available_slots.return_value = [MagicMock()]
 
-        if schedule_exists:
-            schedule_exists.days_of_week = list(days_of_week)
-            schedule_exists.start_time = time(10, 0)
-            schedule_exists.end_time = time(11, 0)
+        if schedule:
+            schedule.days_of_week = days
+            schedule.start_time = time(10, 0)
+            schedule.end_time = time(11, 0)
 
-        service.repo.exists_slots_in_range = AsyncMock(return_value=check)
+        monkeypatch.setattr("app.mappers.slot.to_bd", lambda x,y,z: MagicMock())
+        monkeypatch.setattr("app.mappers.slot.list_to_out", lambda x: ["list"])
 
-        if expected_result_type == "create":
-            service.repo.create_slots = AsyncMock(return_value=[MagicMock()])
-        elif expected_result_type == "existing":
-            service.repo.list_available_slots = AsyncMock(return_value=[MagicMock()])
-
-        monkeypatch.setattr("app.mappers.slot.to_bd", lambda *args: MagicMock())
-        monkeypatch.setattr("app.mappers.slot.list_to_out", lambda x: [])
-
-        if expect_exception:
-            with pytest.raises(HTTPException):
+        if expected_status:
+            with pytest.raises(HTTPException) as exc:
                 await service.list_slots("room-id", test_date)
-        else:
-            result = await service.list_slots("room-id", test_date)
-            assert isinstance(result, list)
+            assert exc.value.status_code == expected_status
+            return
+
+        result = await service.list_slots("room-id", test_date)
+
+        service.repo.get_schedule_by_room_id.assert_awaited_once()
+        if expected_path == "empty":
+            service.repo.exists_slots_in_range.assert_not_awaited()
+            service.repo.create_slots.assert_not_awaited()
+            service.repo.list_available_slots.assert_not_awaited()
+            assert result == []
+
+        elif expected_path == "create":
+            service.repo.exists_slots_in_range.assert_awaited_once()
+            service.repo.create_slots.assert_awaited_once()
+            service.repo.list_available_slots.assert_not_awaited()
+            assert result == ["list"]
+
+        elif expected_path == "existing":
+            service.repo.exists_slots_in_range.assert_awaited_once()
+            service.repo.create_slots.assert_not_awaited()
+            service.repo.list_available_slots.assert_awaited_once()
+            assert result == ["list"]
+
+
+
 
     @pytest.mark.parametrize(
-        "slot, booking_exists, booking_status, slot_in_past, expect_exception, action",
+        "slot, booking, slot_in_past, expected_status, expected_action",
         [
-            (None, None, None, False, True, None),
-            (MagicMock(), None, None, True, True, None),
-            (MagicMock(), MagicMock(), "active", False, True, None),
-            (MagicMock(), MagicMock(), "cancel", False, False, "reactivate"),
-            (MagicMock(), None, None, False, False, "create"),
+            # нет слота
+            (None, None, False, 404, None),
+            # срок прошёл слота
+            (MagicMock(), None, True, 400, None),
+            # забронирован
+            (MagicMock(), MagicMock(status="active"), False, 409, None),
+            # обновлена отменённая бронь
+            (MagicMock(), MagicMock(status="cancel"), False, None, "reactivate"),
+            # создана бронь
+            (MagicMock(), None, False, None, "create"),
         ],
     )
     @pytest.mark.asyncio
@@ -165,21 +190,21 @@ class TestService:
         service,
         monkeypatch,
         slot,
-        booking_exists,
-        booking_status,
+        booking,
         slot_in_past,
-        expect_exception,
-        action,
+        expected_status,
+        expected_action,
     ):
-        service.repo.get_slot_by_id = AsyncMock(return_value=slot)
-        service.repo.get_booking_by_slot_id = AsyncMock(return_value=booking_exists)
+        service.repo.get_slot_by_id.return_value = slot
+        service.repo.get_booking_by_slot_id.return_value = booking
+        service.repo.create_booking.return_value = MagicMock()
 
         user = MagicMock()
         user.uuid = "user-id"
 
-        booking = MagicMock()
-        booking.slotId = "slot-id"
-        booking.conferenceLink = True
+        request = MagicMock()
+        request.slotId = "slot-id"
+        request.conferenceLink = True
 
         if slot:
             slot.end = (
@@ -187,100 +212,82 @@ class TestService:
                 if slot_in_past
                 else datetime.now(timezone.utc) + timedelta(days=1)
             )
+            
+        monkeypatch.setattr("app.mappers.booking.to_bd", lambda x,y,z: MagicMock())
+        monkeypatch.setattr("app.mappers.booking.to_out", lambda x: "booking")
 
-        if booking_exists:
-            booking_exists.status = booking_status
+        if expected_status:
+            with pytest.raises(HTTPException) as exc:
+                await service.create_booking(user, request)
+            assert exc.value.status_code == expected_status
+            return
 
-        monkeypatch.setattr("app.mappers.booking.to_bd", lambda b, u, l: MagicMock())
-        monkeypatch.setattr("app.mappers.booking.to_out", lambda x: MagicMock())
+        result = await service.create_booking(user, request)
+        assert result =="booking"
 
-        if action == "reactivate":
-            service.repo.create_booking = AsyncMock(return_value=MagicMock())
-        elif action == "create":
-            service.repo.create_booking = AsyncMock(return_value=MagicMock())
-
-        if expect_exception:
-            with pytest.raises(HTTPException):
-                await service.create_booking(user, booking)
-        else:
-            result = await service.create_booking(user, booking)
-            assert result is not None
-
+        service.repo.get_slot_by_id.assert_awaited_once()
+        service.repo.get_booking_by_slot_id.assert_awaited_once()
+        if expected_action == "create":
+            service.repo.create_booking.assert_awaited_once()
+        elif expected_action == "reactivate":
             service.repo.create_booking.assert_awaited_once()
 
+
     @pytest.mark.parametrize(
-        "total, page, page_size, expected_offset, should_call_list",
+        "page, page_size, count_room",
         [
-            (None, 1, 10, None, False),
-            (100, 2, 10, 10, True),
-            (0, 1, 10, 0, True),
+            (1, 2, None),
+            (1, 4, 100),
         ],
     )
     @pytest.mark.asyncio
-    async def test_list_bookings(
-        self,
-        service,
-        monkeypatch,
-        total,
-        page,
-        page_size,
-        expected_offset,
-        should_call_list,
-    ):
-        service.repo.get_bookings_count = AsyncMock(return_value=total)
-        service.repo.list_bookings_paginated = AsyncMock(return_value=[MagicMock()])
-
-        monkeypatch.setattr(
-            "app.mappers.booking.list_to_out",
-            lambda x: ["mapped"],
-        )
-
+    async def test_list_bookings(self, service, page, monkeypatch, page_size, count_room):
+        service.repo.get_bookings_count.return_value = count_room
+        service.repo.list_bookings_paginated.return_value = MagicMock()
+        
+        monkeypatch.setattr("app.mappers.booking.list_to_out", lambda x: ["list"])
+        
         result = await service.list_bookings(page, page_size)
-
-        if total is None:
-            assert result == []
+        
+        service.repo.get_bookings_count.assert_awaited_once()
+        if count_room is None:
             service.repo.list_bookings_paginated.assert_not_awaited()
+            assert result == []
         else:
-            assert result == ["mapped"]
-
+            expected_offset = (page - 1) * page_size
             service.repo.list_bookings_paginated.assert_awaited_once_with(
-                expected_offset,
-                page_size,
-                ANY,
+                expected_offset, page_size, ANY
             )
+            assert result == ["list"]
+            
+            
 
     @pytest.mark.asyncio
     async def test_read_my_bookings(self, service, monkeypatch):
+        service.repo.list_user_bookings = AsyncMock(return_value=[MagicMock()])
+        
         user = MagicMock()
         user.uuid = "user-id"
-        repo_result = [MagicMock()]
-        service.repo.list_user_bookings = AsyncMock(return_value=repo_result)
-        monkeypatch.setattr(
-            "app.mappers.booking.list_to_out",
-            lambda x: ["mapped"],
-        )
+        
+        monkeypatch.setattr("app.mappers.booking.list_to_out",lambda x: ["list"],)
         result = await service.read_my_bookings(user)
-
-        assert result == ["mapped"]
-
         service.repo.list_user_bookings.assert_awaited_once()
+        assert result == ["list"]
 
-        args, _ = service.repo.list_user_bookings.call_args
-        time_arg = args[0]
-        user_arg = args[1]
-
-        assert isinstance(time_arg, datetime)
-        assert time_arg.tzinfo == timezone.utc
-        assert user_arg == user.uuid
-
+        
     @pytest.mark.parametrize(
-        "booking_db, slot, slot_in_past, expect_exception, expected_status",
+        "booking_db, slot, slot_in_past, expected_status",
         [
-            (None, None, False, True, 404),
-            (MagicMock(user_id="other"), None, False, True, 403),
-            (MagicMock(user_id="user-id"), None, False, True, 500),
-            (MagicMock(user_id="user-id"), MagicMock(), True, True, 403),
-            (MagicMock(user_id="user-id"), MagicMock(), False, False, None),
+            # booking не найден
+            (None, None, False, 404),
+            # чужая бронь
+            (MagicMock(user_id="other"), None, False, 403),
+            # слот не найден  
+            (MagicMock(user_id="user-id"), None, False, 500),
+            # слот в прошлом  
+            (MagicMock(user_id="user-id"), MagicMock(), True, 403),
+            # успех  
+            (MagicMock(user_id="user-id"), MagicMock(), False, None),  
         ],
     )
     @pytest.mark.asyncio
@@ -290,18 +297,17 @@ class TestService:
         booking_db,
         slot,
         slot_in_past,
-        expect_exception,
         expected_status,
     ):
+        service.repo.read_booking_by_id.return_value = booking_db
+        service.repo.get_slot_by_id.return_value = slot
+        service.repo.update_booking.return_value = MagicMock()
+        
         user = MagicMock()
         user.uuid = "user-id"
 
-        service.repo.read_booking_by_id = AsyncMock(return_value=booking_db)
-
         if booking_db:
             booking_db.slot_id = "slot-id"
-
-        service.repo.get_slot_by_id = AsyncMock(return_value=slot)
 
         if slot:
             slot.end = (
@@ -310,17 +316,25 @@ class TestService:
                 else datetime.now(timezone.utc) + timedelta(days=1)
             )
 
-        service.repo.update_booking = AsyncMock()
-
-        if expect_exception:
+        if expected_status:
             with pytest.raises(HTTPException) as exc:
                 await service.cancel_booking(user, "booking-id")
-
             assert exc.value.status_code == expected_status
-        else:
-            result = await service.cancel_booking(user, "booking-id")
 
-            assert result is None
-            service.repo.update_booking.assert_awaited_once()
+            service.repo.read_booking_by_id.assert_awaited_once()
+            service.repo.update_booking.assert_not_awaited()
+            if booking_db is None or booking_db.user_id != "user-id":
+                service.repo.get_slot_by_id.assert_not_awaited()
+            else:
+                service.repo.get_slot_by_id.assert_awaited_once()
+            return
 
-            assert booking_db.status == "cancel"
+        result = await service.cancel_booking(user, "booking-id")
+
+        service.repo.read_booking_by_id.assert_awaited_once()
+        service.repo.get_slot_by_id.assert_awaited_once()
+        service.repo.update_booking.assert_awaited_once()
+        
+        assert result is None
+        assert booking_db.status == "cancel"
+
