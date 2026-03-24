@@ -1,4 +1,3 @@
-from fastapi import HTTPException, status
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
@@ -10,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseHellper:
     def __init__(self, url: str, echo: bool = False):
         self.engine = create_async_engine(url=url, echo=echo)
@@ -18,7 +18,7 @@ class DatabaseHellper:
             autoflush=False,
             expire_on_commit=False,
         )
-                
+
     @asynccontextmanager
     async def transaction(self):
         async with self.session_factory() as session:
@@ -29,5 +29,6 @@ class DatabaseHellper:
                 await session.rollback()
                 logger.error(f"Falid transaction error:{e}")
                 raise e
+
 
 db_helper = DatabaseHellper(url=settings.database_url)

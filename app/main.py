@@ -13,13 +13,19 @@ from fastapi import FastAPI
 logger = logging.getLogger(__name__)
 setup_logging()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Запуск приложения")
     yield
     logger.info("Остановка приложения")
 
-app = FastAPI(lifespan=lifespan, title="Avito TEST",swagger_ui_parameters={"persistAuthorization": True})
+
+app = FastAPI(
+    lifespan=lifespan,
+    title="Avito TEST",
+    swagger_ui_parameters={"persistAuthorization": True},
+)
 app.include_router(auth_router)
 app.include_router(room_router)
 app.include_router(booking_router)

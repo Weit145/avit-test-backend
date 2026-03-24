@@ -1,6 +1,4 @@
-__all__ = (
-    "Base",
-)
+__all__ = ("Base", "Room", "Schedule", "Slot", "Booking")
 
 from .base import Base
 from .room import Room

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class Slot(BaseModel):
     pass
 
+
 class OutSlot(Slot):
     id: uuid.UUID
     roomId: uuid.UUID

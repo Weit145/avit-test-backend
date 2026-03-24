@@ -3,9 +3,10 @@ import uuid
 
 
 class Auth(BaseModel):
-    uuid:uuid.UUID
-    role:str
+    uuid: uuid.UUID
+    role: str
     pass
+
 
 class JWT(BaseModel):
     jwt: str
