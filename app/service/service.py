@@ -147,10 +147,12 @@ class Service:
             booking_bd = map_booking.to_bd(booking, user.uuid, link)
 
             if check_brooked is not None and check_brooked.status == "cancel":
-                booking_bd.status = "active"
-                booking_bd.user_id = user.uuid
-                booking_bd.conference_link = link
-            result = await self.repo.create_booking(booking_bd, session)
+                check_brooked.status = "active"
+                check_brooked.user_id = user.uuid
+                check_brooked.conference_link = link
+                result = await self.repo.create_booking(check_brooked, session)
+            else:
+                result = await self.repo.create_booking(booking_bd, session)
         logger.info(f"Create booking by {user.uuid}")
         return map_booking.to_out(result)
 
