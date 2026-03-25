@@ -14,7 +14,6 @@ class Schedule(Base):
     days_of_week: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
     start_time: Mapped[datetime.time] = mapped_column(nullable=False)
     end_time: Mapped[datetime.time] = mapped_column(nullable=False)
+    room: Mapped["Room"] = relationship(back_populates="schedule")
 
     __table_args__ = (UniqueConstraint("room_id", name="uq_schedule"),)
-
-    room: Mapped["Room"] = relationship(back_populates="schedule")

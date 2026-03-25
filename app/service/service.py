@@ -94,13 +94,15 @@ class Service:
                     detail="Slots is in the past",
                 )
 
-            start_of_day = datetime.combine(date, schedule.start_time, tzinfo=timezone.utc)
+            start_of_day = datetime.combine(
+                date, schedule.start_time, tzinfo=timezone.utc
+            )
             end_of_day = datetime.combine(date, schedule.end_time, tzinfo=timezone.utc)
             check = await self.repo.exists_slots_in_range(
                 roomId, start_of_day, end_of_day, session
             )
 
-            if check is None or not check:
+            if not check:
                 list_slot = []
                 current = start_of_day
                 step = timedelta(minutes=30)
@@ -125,7 +127,7 @@ class Service:
                     detail="Slot not found",
                 )
 
-            # TODO учесть в readme
+            # TODO учесть в readme            try:
             if slot.end < datetime.now(timezone.utc):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -147,12 +149,10 @@ class Service:
             booking_bd = map_booking.to_bd(booking, user.uuid, link)
 
             if check_brooked is not None and check_brooked.status == "cancel":
-                check_brooked.status = "active"
-                check_brooked.user_id = user.uuid
-                check_brooked.conference_link = link
-                result = await self.repo.create_booking(check_brooked, session)
-            else:
-                result = await self.repo.create_booking(booking_bd, session)
+                booking_bd.status = "active"
+                booking_bd.user_id = user.uuid
+                booking_bd.conference_link = link
+            result = await self.repo.create_booking(booking_bd, session)
         logger.info(f"Create booking by {user.uuid}")
         return map_booking.to_out(result)
 

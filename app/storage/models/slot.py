@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Uuid, ForeignKey, DateTime
+from sqlalchemy import Uuid, ForeignKey, DateTime, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from .base import Base
@@ -15,6 +15,11 @@ class Slot(Base):
     end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     room: Mapped["Room"] = relationship(back_populates="slots")
-    bookings: Mapped[list["Booking"]] = relationship(
-        back_populates="slot", cascade="all, delete-orphan"
+    booking: Mapped["Booking"] = relationship(
+        back_populates="slot", cascade="all, delete-orphan", uselist=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("room_id", "start", "end"),
+        Index("idx_slot_room_time", "room_id", "start", "end"),
     )

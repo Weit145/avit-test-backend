@@ -10,7 +10,7 @@ down:
 	docker compose down
 
 test_unit:
-	poetry run pytest -v
+	poetry run pytest -v --ignore=test/integration
 
 test_integration:
 	docker compose --profile test up --build --abort-on-container-exit --exit-code-from integration-tests
@@ -18,4 +18,3 @@ test_integration:
 
 seed: up
 	docker compose run --rm app python seed.py
-в

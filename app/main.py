@@ -30,9 +30,11 @@ app.include_router(auth_router)
 app.include_router(room_router)
 app.include_router(booking_router)
 
+
 @app.get("/_info", status_code=status.HTTP_200_OK)
 async def info():
     return status.HTTP_200_OK
+
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", reload=True)

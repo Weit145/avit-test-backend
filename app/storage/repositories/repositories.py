@@ -1,4 +1,4 @@
-from sqlalchemy import select, exists, func
+from sqlalchemy import select, exists, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 
@@ -66,7 +66,7 @@ class SQLAlchemyAuthRepository:
             )
         )
         result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.scalar()
 
     async def list_available_slots(
         self,
@@ -75,11 +75,15 @@ class SQLAlchemyAuthRepository:
         end_of_day: datetime,
         session: AsyncSession,
     ) -> List[Slot]:
-        stmt = select(Slot).where(
-            Slot.room_id == roomId,
-            Slot.start >= start_of_day,
-            Slot.start < end_of_day,
-            ~Slot.bookings.any(Booking.status == "active"),
+        stmt = (
+            select(Slot)
+            .where(
+                Slot.room_id == roomId,
+                Slot.start >= start_of_day,
+                Slot.start < end_of_day,
+                ~Slot.booking.has(Booking.status == "active"),
+            )
+            .order_by(Slot.start)
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
@@ -92,12 +96,14 @@ class SQLAlchemyAuthRepository:
         return slots
 
     async def get_slot_by_id(self, id: uuid.UUID, session: AsyncSession) -> Slot | None:
-        return await session.get(Slot, id)
+        stmt = select(Slot).where(Slot.id == id).with_for_update()
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_booking_by_slot_id(
         self, slot_id: uuid.UUID, session: AsyncSession
     ) -> Booking | None:
-        stmt = select(Booking).where(Booking.slot_id == slot_id)
+        stmt = select(Booking).where(Booking.slot_id == slot_id).with_for_update()
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
