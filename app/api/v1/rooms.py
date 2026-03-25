@@ -17,7 +17,6 @@ from .dependencies import check_admin_role, get_current_user
 router = APIRouter(prefix="/rooms", tags=["Rooms"])
 
 
-# TODO написать редми что сделан ограничение
 @router.get("/list/", status_code=status.HTTP_200_OK, response_model=List[OutRoom])
 async def list_rooms(
     _: Annotated[Auth, Depends(get_current_user)],

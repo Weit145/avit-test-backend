@@ -87,7 +87,6 @@ class Service:
 
             if schedule is None or date.isoweekday() not in schedule.days_of_week:
                 return []
-            # TODO написать в редми
             elif date < datetime.now(timezone.utc).date():
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -127,7 +126,6 @@ class Service:
                     detail="Slot not found",
                 )
 
-            # TODO учесть в readme            try:
             if slot.end < datetime.now(timezone.utc):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

@@ -133,7 +133,6 @@ class SQLAlchemyAuthRepository:
     async def list_user_bookings(
         self, time_now: datetime, user_id: uuid.UUID, session: AsyncSession
     ) -> List[Booking]:
-        # TODO написать редми что только активные
         stmt = (
             select(Booking)
             .join(Slot, Booking.slot_id == Slot.id)

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Uuid, ForeignKey, ARRAY, Integer, UniqueConstraint
+from sqlalchemy import Uuid, ForeignKey, ARRAY, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import datetime
 from .base import Base
@@ -9,11 +9,9 @@ class Schedule(Base):
     __tablename__ = "schedule"
 
     room_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("room.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("room.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     days_of_week: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
     start_time: Mapped[datetime.time] = mapped_column(nullable=False)
     end_time: Mapped[datetime.time] = mapped_column(nullable=False)
     room: Mapped["Room"] = relationship(back_populates="schedule")
-
-    __table_args__ = (UniqueConstraint("room_id", name="uq_schedule"),)

@@ -20,7 +20,7 @@ class SlotUser(HttpUser):
     @task
     def get_slots(self):
         self.client.get(
-            "/rooms/8e07d1bc-f10d-4e9f-81c4-4381a4f9b623/slots/list",
+            "/rooms/1500c460-133b-4e70-a7ac-5d20b5275a2e/slots/list",
             params={"date": "2026-04-26"},
             headers={"Authorization": f"Bearer {self.token}"},
         )

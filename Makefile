@@ -16,5 +16,5 @@ test_integration:
 	docker compose --profile test up --build --abort-on-container-exit --exit-code-from integration-tests
 	docker compose --profile test down -v
 
-seed: up
-	docker compose run --rm app python seed.py
+test_locust:
+	locust -f test/locust/locustfile.py 
